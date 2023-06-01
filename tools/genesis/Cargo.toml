@@ -40,6 +40,7 @@ zapatos-types = { workspace = true }
 zapatos-vm-genesis = { workspace = true }
 zapatos-config = { workspace = true }
 
+ol-genesis-tools = { workspace = true }
 
 # for the hack_ files
 dialoguer = { workspace = true }
