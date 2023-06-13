@@ -74,9 +74,16 @@ You should have a `genesis/genesis.blob` file now in `$HOME/libra` plus a `valid
 
 9. Start your node!
 
+
 ```
-libra node --config-path ~/.libra/validator.yaml
+./target/release/libra node --config-path ~/.libra/validator.yaml
 ```
+
+10. Check for progress.
+
+You can fetch chain metadata with the API
+
+`curl localhost:8080/v1`
 ### Troubleshooting
 
 1. I made changes to a .move file
