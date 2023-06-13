@@ -54,7 +54,10 @@ You'll input the name of the github repo (`--org-github` and `--name-github `) b
 
 6. Coordinator: merge pull requests.
 
-The owner of the coordinator repo should merge the pull requests the registrants made to the repo.
+6a. The owner of the coordinator repo should merge the pull requests the registrants made to the repo.
+
+6b. Then the `layout.yaml`  file needs to be updated with the list of all the users (addresses) joining genesis.
+
 
 7. Run the genesis transaction builder with `libra-genesis-tools genesis`
 
