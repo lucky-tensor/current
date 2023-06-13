@@ -11,12 +11,12 @@
 
 2. Configure the nodes
 
-2a. Nodes will need to have a number of tools installed in order to compile. This script *might*  work for your distro `https://github.com/0o-de-lally/libra/blob/v6/ol/util/setup.sh`
+2a. Nodes will need to have a number of tools installed in order to compile. This script *might*  work for your distro ./util/dev-setup.sh
 
 ```
 # targeting ubuntu
 sudo apt update
-sudo apt install -y git tmux jq build-essential cmake clang llvm libgmp-dev pkg-config libssl-dev lld
+sudo apt install -y git tmux jq build-essential cmake clang llvm libgmp-dev pkg-config libssl-dev lld libpq-dev
 
 curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 ```
