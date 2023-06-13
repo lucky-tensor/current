@@ -361,9 +361,10 @@ impl GenesisWizard {
             &*self.genesis_repo_org,
             &*self.repo_name,
             &*self.github_username,
+            None, // default to "main"
         ) {
-            Ok(_) => println!("created pull request to genesis repo"),
-            Err(_) => println!("failed to create pull request to genesis repo: do you already have an open PR? If so, you don't need to do anything else."),
+            Ok(_) => {},
+            Err(e) => bail!("failed to create pull request to genesis repo: do you already have an open PR? If so, you don't need to do anything else. Message: {}", e.to_string()),
         };
         pb.inc(1);
         pb.finish_and_clear();
