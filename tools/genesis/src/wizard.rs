@@ -364,7 +364,15 @@ impl GenesisWizard {
             None, // default to "main"
         ) {
             Ok(_) => {},
-            Err(e) => bail!("failed to create pull request to genesis repo: do you already have an open PR? If so, you don't need to do anything else. Message: {}", e.to_string()),
+            Err(e) => {
+              if e.to_string().contains("A pull request already exists") {
+                println!("INFO: A pull request already exists, you don't need to do anything else.");
+                // return Ok(())
+              } else {
+                bail!("failed to create pull, message: {}", e.to_string())
+              }
+              
+            },
         };
         pb.inc(1);
         pb.finish_and_clear();
