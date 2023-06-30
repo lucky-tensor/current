@@ -108,7 +108,7 @@ impl Sender {
     }
     pub async fn from_app_cfg(
         app_cfg: &AppCfg,
-        pri_key: Option<Ed25519PrivateKey>,
+        pri_key: &Option<Ed25519PrivateKey>,
     ) -> anyhow::Result<Self> {
         let profile = app_cfg.get_profile(None)?;
         let address = profile.account;
@@ -117,17 +117,17 @@ impl Sender {
             Some(p) => p,
             None => {
                 match profile.test_private_key.clone() {
-                    Some(k) => k,
+                    Some(k) => &k,
                     None => {
                       let leg_keys =  libra_wallet::account_keys::get_keys_from_prompt()?;
-                      leg_keys.child_0_owner.pri_key
+                      &leg_keys.child_0_owner.pri_key
                     },
                 }
             }
         };
 
         let temp_seq_num = 0;
-        let mut local_account = LocalAccount::new(address, key, temp_seq_num);
+        let mut local_account = LocalAccount::new(address, key.to_owned(), temp_seq_num);
 
         let url = &app_cfg.get_network_profile(None)?.the_best_one()?;
         // // Todo: find one out of the list which can produce metadata, not the first one.

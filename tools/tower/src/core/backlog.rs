@@ -16,7 +16,7 @@ use libra_query::account_queries;
 // use diem_client::BlockingClient as DiemClient;
 // use diem_logger::prelude::*;
 use libra_types::{
-  exports::Client,
+  exports::{Client, Ed25519PrivateKey},
   type_extensions::client_ext::ClientExt,
   legacy_types::{
     app_cfg::AppCfg,
@@ -28,7 +28,7 @@ use libra_types::{
 const EPOCH_MINING_THRES_UPPER: u64 = 72;
 /// Submit a backlog of blocks that may have been mined while network is offline.
 /// Likely not more than 1.
-pub async fn process_backlog(config: &AppCfg) -> anyhow::Result<()> {
+pub async fn process_backlog(config: &AppCfg, pri_key: Option<Ed25519PrivateKey>) -> anyhow::Result<()> {
     // Getting local state height
     let mut blocks_dir = config.workspace.node_home.clone();
     blocks_dir.push(&config.get_block_dir(None)?);
@@ -40,7 +40,7 @@ pub async fn process_backlog(config: &AppCfg) -> anyhow::Result<()> {
     println!("Local tower height: {:?}", current_proof_number);
 
     if current_proof_number == 0 { // if we are at genesis
-      return submit_or_delete(config, current_local_proof, current_block_path).await
+      return submit_or_delete(config, current_local_proof, current_block_path, &pri_key).await
     }
 
 
@@ -83,7 +83,7 @@ pub async fn process_backlog(config: &AppCfg) -> anyhow::Result<()> {
 
         let (block, path) = VDFProof::get_proof_number(i, &blocks_dir)?;
         
-        submit_or_delete(config, block, path).await?;
+        submit_or_delete(config, block, path, &pri_key).await?;
 
 
         i = i + 1;
@@ -92,8 +92,8 @@ pub async fn process_backlog(config: &AppCfg) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn submit_or_delete(config: &AppCfg, block: VDFProof, path: PathBuf) -> Result<()>{
-        let mut sender = Sender::from_app_cfg(config, None).await?;
+pub async fn submit_or_delete(config: &AppCfg, block: VDFProof, path: PathBuf, pri_key: &Option<Ed25519PrivateKey>) -> Result<()>{
+        let mut sender = Sender::from_app_cfg(config, pri_key).await?;
 
         sender.commit_proof(
           block.clone()

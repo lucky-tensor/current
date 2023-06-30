@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use libra_types::legacy_types::app_cfg::AppCfg;
+use libra_types::exports::Ed25519PrivateKey;
 use std::path::PathBuf;
 use crate::core::{proof, backlog};
 
@@ -20,6 +21,10 @@ pub struct TowerCli {
     /// nickname of the profile to use, if there is more than one. Defaults to first.
     #[clap(short,long)]
     profile: Option<String>,
+
+    /// private key instead of using prompt. Warning: intended for tests only
+    #[clap(short,long)]
+    test_private_key: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -39,14 +44,17 @@ impl TowerCli {
       let cli = TowerCli::parse();
 
       let mut app_cfg = AppCfg::load(cli.config_file)?;
-
+      let pk = if let Some(pk_string) = self.test_private_key {
+        Ed25519PrivateKey::from_str(&pk_string).ok()
+      } else { None };
+            
       match cli.command {
         TowerSub::Backlog { show } => {
           println!("backlog");
           if show {
             backlog::show_backlog(&app_cfg).await?;
           } else {
-            backlog::process_backlog(&app_cfg).await?;
+            backlog::process_backlog(&app_cfg, pk).await?;
           }
         },
         TowerSub::Start => {
