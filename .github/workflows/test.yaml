@@ -18,7 +18,6 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
         with:
-
           # git-restore-mtime-bare uses the ref log to find the correct timestamp
           # for each file. This requires a full git history. The default value (1)
           # creates a shallow checkout.
