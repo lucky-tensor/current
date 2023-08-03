@@ -50,7 +50,6 @@ pub struct GenesisWizard {
     pub epoch: Option<u64>,
 }
 
-
 impl GenesisWizard {
     /// constructor
     pub fn new(genesis_repo_org: String, repo_name: String, data_path: Option<PathBuf>) -> Self {
@@ -92,12 +91,11 @@ impl GenesisWizard {
             ))
             .interact()?;
         if to_init {
-
             let host = what_host()?;
 
             let keep_legacy_address = Confirm::new()
-            .with_prompt("Is this a legacy V5 address you wish to keep?")
-            .interact()?;
+                .with_prompt("Is this a legacy V5 address you wish to keep?")
+                .interact()?;
 
             initialize_host(
                 Some(self.data_path.clone()),
@@ -203,8 +201,9 @@ impl GenesisWizard {
             self.github_token.clone(),
         );
 
-        self.github_username = temp_gh_client.get_authenticated_user()
-        .context("could not get authenticated user on github api")?;
+        self.github_username = temp_gh_client
+            .get_authenticated_user()
+            .context("could not get authenticated user on github api")?;
 
         if !Confirm::new()
             .with_prompt(format!(
@@ -369,13 +368,13 @@ impl GenesisWizard {
                     );
                     // return Ok(())
                 } else {
-                  if e.to_string().contains("No commits between main and main") {
-                    println!(
+                    if e.to_string().contains("No commits between main and main") {
+                        println!(
                         "INFO: A pull request already exists, and there are no changes with main"
                     );
-                  } else {
-                    bail!("failed to create pull, message: {}", e.to_string())
-                  }
+                    } else {
+                        bail!("failed to create pull, message: {}", e.to_string())
+                    }
                 }
             }
         };
@@ -483,7 +482,14 @@ fn test_validator_files_config() {
         fs::remove_dir_all(&test_path).unwrap();
     }
 
-    initialize_host(Some(test_path.clone()), "validator", h, Some(alice_mnem), false).unwrap();
+    initialize_host(
+        Some(test_path.clone()),
+        "validator",
+        h,
+        Some(alice_mnem),
+        false,
+    )
+    .unwrap();
 
     fs::remove_dir_all(&test_path).unwrap();
 }
