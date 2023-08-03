@@ -3,6 +3,7 @@ use zapatos::{
     account::key_rotation::lookup_address,
     common::types::{CliConfig, ConfigSearchMode},
 };
+use zapatos_logger::prelude::*;
 use zapatos_sdk::{
     rest_client::{aptos_api_types::TransactionOnChainData, Client},
     transaction_builder::TransactionBuilder,
@@ -10,7 +11,7 @@ use zapatos_sdk::{
         chain_id::ChainId,
         transaction::{ExecutionStatus, SignedTransaction, TransactionPayload},
         AccountKey, LocalAccount,
-    },
+    }, crypto::HashValue,
 };
 
 use std::{
@@ -25,7 +26,7 @@ use libra_types::{
     type_extensions::{
         cli_config_ext::CliConfigExt,
         client_ext::{ClientExt, DEFAULT_TIMEOUT_SECS},
-    },
+    }, ol_progress::OLProgress,
 };
 
 // #[derive(Debug)]
@@ -73,10 +74,10 @@ use libra_types::{
 
 /// Struct to organize all the TXS sending, so we're not creating new Client on every TX, if there are multiple.
 pub struct Sender {
+    pub local_account: LocalAccount,
     client: Client,
-    local_account: LocalAccount,
     chain_id: ChainId,
-    response: Option<TransactionOnChainData>,
+    pub response: Option<TransactionOnChainData>,
 }
 
 impl Sender {
@@ -92,9 +93,10 @@ impl Sender {
         let address = lookup_address(
             &client,
             account_key.authentication_key().derived_address(),
-            false,
+            true,
         )
         .await?;
+        info!("using address {}", &address);
 
         let seq = client.get_sequence_number(address).await?;
         let local_account = LocalAccount::new(address, account_key, seq);
@@ -106,24 +108,20 @@ impl Sender {
             response: None,
         })
     }
+
+    ///
     pub async fn from_app_cfg(
         app_cfg: &AppCfg,
-        pri_key: Option<Ed25519PrivateKey>,
+        profile: Option<String>,
     ) -> anyhow::Result<Self> {
-        let profile = app_cfg.get_profile(None)?;
+        let profile = app_cfg.get_profile(profile)?;
         let address = profile.account;
-
-        let key = match pri_key {
-            Some(p) => p,
+        let key = match &profile.test_private_key.clone() {
+            Some(k) => k.to_owned(),
             None => {
-                match profile.test_private_key.clone() {
-                    Some(k) => k,
-                    None => {
-                      let leg_keys =  libra_wallet::account_keys::get_keys_from_prompt()?;
-                      leg_keys.child_0_owner.pri_key
-                    },
-                }
-            }
+              let leg_keys =  libra_wallet::account_keys::get_keys_from_prompt()?;
+              leg_keys.child_0_owner.pri_key
+            },
         };
 
         let temp_seq_num = 0;
@@ -154,6 +152,7 @@ impl Sender {
         Ok(s)
     }
 
+    // TODO: is this deprecated
     pub async fn from_vendor_profile(
         profile_name: Option<&str>,
         workspace: Option<PathBuf>,
@@ -217,13 +216,26 @@ impl Sender {
         &mut self,
         payload: TransactionPayload,
     ) -> anyhow::Result<TransactionOnChainData> {
+        match &payload {
+          TransactionPayload::Script(s) => {
+            let hash = HashValue::sha3_256_of(s.code());
+            info!("script code hash: {}", &hash.to_hex_literal());
+          },
+          _ => {}
+        }
+
         let signed = self.sign_payload(payload);
+        let spin = OLProgress::spin_steady(250, "awaiting transaction response".to_string());
         let r = self.submit(&signed).await?;
         self.response = Some(r.clone());
+        spin.finish_and_clear();
+        debug!("{:?}", &r);
+        OLProgress::complete("transaction success");
         Ok(r)
     }
 
     pub fn sign_payload(&mut self, payload: TransactionPayload) -> SignedTransaction {
+
         let t = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -239,6 +251,8 @@ impl Sender {
         signed_trans: &SignedTransaction,
     ) -> anyhow::Result<TransactionOnChainData> {
         let pending_trans = self.client.submit(signed_trans).await?.into_inner();
+
+        info!("pending tx hash: {}", &pending_trans.hash.to_string());
 
         let res = self
             .client
@@ -263,5 +277,16 @@ impl Sender {
                 Err(status.to_owned())
             }
         }
+    }
+
+    pub fn tx_hash(&self) -> Option<HashValue> {
+      if let Some(r) = & self.response {
+        return Some(r.info.transaction_hash())
+      };
+      None
+    }
+
+    pub fn client(&self) -> &Client {
+      &self.client
     }
 }

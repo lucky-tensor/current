@@ -1,12 +1,13 @@
 use crate::{
-    account_queries::{get_account_balance_libra, get_tower_state},
-    query_view,
+    account_queries::{get_account_balance_libra, get_tower_state, self},
+    query_view::get_view,
 };
 use indoc::indoc;
 use anyhow::{bail, Result};
 use libra_types::type_extensions::client_ext::ClientExt;
 use serde_json::json;
 use zapatos_sdk::{rest_client::Client, types::account_address::AccountAddress};
+use libra_types::exports::AuthenticationKey;
 
 #[derive(Debug, clap::Subcommand)]
 pub enum QueryType {
@@ -70,6 +71,11 @@ pub enum QueryType {
         )]
         args: Option<String>,
     },
+    /// Looks up the address of an account given an auth key. The authkey diverges from the address after a key rotation.
+    LookupAddress {
+      #[clap(short, long)]
+      auth_key: AuthenticationKey // we use account address to parse, because that's the format needed to lookup users. AuthKeys and AccountAddress are the same formats.
+    },
 
     /// get a move value from account blob
     MoveValue {
@@ -129,7 +135,7 @@ impl QueryType {
         match self {
         QueryType::Balance { account } => {
           let res = get_account_balance_libra(&client, *account).await?;
-          Ok(json!(res))
+          Ok(json!(res.scaled()))
         },
         QueryType::Tower { account } => {
           let res = get_tower_state(&client, *account).await?;
@@ -141,14 +147,29 @@ impl QueryType {
             type_args,
             args,
         } => {
-            let res = query_view::run(function_id, type_args.to_owned(), args.to_owned()).await?;
+            let res = get_view(&client, function_id, type_args.to_owned(), args.to_owned()).await?;
             let json = json!({
               "body": res
             });
             Ok(json)
          },
+        QueryType::Epoch => {
+            let res = get_view(&client, "0x1::reconfiguration::get_current_epoch", None, None).await?;
+            // let value = res.first().unwrap().to_owned();
+            let num: Vec<String> = serde_json::from_value(res)?;
+            let json = json!({
+              "epoch": num.first().unwrap().parse::<u64>()?,
+            });
+            Ok(json)
+        },
+        QueryType::LookupAddress { auth_key } => {
+          let addr = account_queries::lookup_originating_address(&client, auth_key.to_owned()).await?;
+
+          Ok(json!({
+            "address": addr
+          }))
+        },
         _ => { bail!("Not implemented for type: {:?}", self) }
-        // QueryType::Epoch => todo!(),
         // QueryType::BlockHeight => todo!(),
         // QueryType::Resources { account } => todo!(),
         // QueryType::MoveValue { account, module_name, struct_name, key_name } => todo!(),

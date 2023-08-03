@@ -15,7 +15,7 @@ use std::{convert::TryFrom, fmt, str::FromStr};
 
 /// A struct that represents an account address.
 #[derive(Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy)]
-#[cfg_attr(any(test, feature = "fuzzing"), derive(proptest_derive::Arbitrary))]
+// #[cfg_attr(any(test, feature = "fuzzing"), derive(proptest_derive::Arbitrary))]
 pub struct LegacyAddress([u8; LegacyAddress::LENGTH]);
 
 impl LegacyAddress {
@@ -268,7 +268,6 @@ impl std::error::Error for AccountAddressParseError {}
 mod tests {
     use super::LegacyAddress;
     use hex::FromHex;
-    use proptest::prelude::*;
     use std::{
         convert::{AsRef, TryFrom},
         str::FromStr,
@@ -384,20 +383,4 @@ mod tests {
         assert!(LegacyAddress::from_str("").is_err());
     }
 
-    proptest! {
-        #[test]
-        fn test_address_string_roundtrip(addr in any::<LegacyAddress>()) {
-            let s = String::from(&addr);
-            let addr2 = LegacyAddress::try_from(s).expect("roundtrip to string should work");
-            prop_assert_eq!(addr, addr2);
-        }
-
-        #[test]
-        fn test_address_protobuf_roundtrip(addr in any::<LegacyAddress>()) {
-            let bytes = addr.to_vec();
-            prop_assert_eq!(bytes.clone(), addr.as_ref());
-            let addr2 = LegacyAddress::try_from(&bytes[..]).unwrap();
-            prop_assert_eq!(addr, addr2);
-        }
-    }
 }

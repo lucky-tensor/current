@@ -23,27 +23,33 @@ anyhow = { workspace = true }
 reqwest = { workspace = true }
 base64 = { workspace = true }
 bcs = { workspace = true }
-hex = { workspace = true }
+# hex = { workspace = true }
 chrono = { workspace = true }
-dirs = { workspace = true }
+# dirs = { workspace = true }
 ureq = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
-zapatos-genesis = { workspace = true }
-zapatos-gas = { workspace = true }
-zapatos-vm = { workspace = true }
-zapatos-framework = { workspace = true }
-zapatos-crypto = { workspace = true }
-zapatos-github-client = { workspace = true }
-zapatos-types = { workspace = true }
-zapatos-vm-genesis = { workspace = true }
+zapatos-db = { workspace = true }
 zapatos-config = { workspace = true }
+zapatos-crypto = { workspace = true }
+zapatos-executor = { workspace = true }
+zapatos-framework = { workspace = true }
+zapatos-gas = { workspace = true }
+zapatos-genesis = { workspace = true }
+zapatos-github-client = { workspace = true }
+zapatos-state-view = { workspace = true }
+zapatos-storage-interface = { workspace = true }
+zapatos-temppath = { workspace = true }
+zapatos-types = { workspace = true }
+zapatos-vm = { workspace = true }
+zapatos-vm-genesis = { workspace = true }
+
 move-core-types = { workspace = true }
 
 # for the hack_ files
 dialoguer = { workspace = true }
-console = { workspace = true }
+# console = { workspace = true }
 indicatif = { workspace = true }
 
 [dev-dependencies]

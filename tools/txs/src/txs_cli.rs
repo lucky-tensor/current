@@ -1,4 +1,5 @@
-use crate::submit_transaction::Sender;
+use crate::txs_cli_upgrade::UpgradeTxs;
+use crate::{submit_transaction::Sender, publish::encode_publish_payload};
 use crate::txs_cli_vals::ValidatorTxs;
 use std::path::PathBuf;
 
@@ -12,6 +13,7 @@ use libra_types::{
 use libra_wallet::account_keys::{get_keys_from_mnem, get_keys_from_prompt};
 use url::Url;
 
+use zapatos::common::types::MovePackageDir;
 use zapatos_sdk::{
     // chain_id::{ChainId, NamedChain},
     crypto::{ed25519::Ed25519PrivateKey, ValidCryptoMaterialStringExt},
@@ -38,6 +40,11 @@ pub struct TxsCli {
     #[clap(short, long)]
     pub test_private_key: Option<String>,
 
+    // TODO
+    // /// optional, pick name (substring of address or nickname) of a user profile, if there are multiple. Will choose the default one set..
+    // #[clap(short, long)]
+    // pub nickname_profile: Option<String>,
+
     /// optional, id of chain as name. Will default to MAINNET;
     #[clap(long)]
     pub chain_id: Option<NamedChain>,
@@ -58,20 +65,12 @@ pub struct TxsCli {
 
 #[derive(clap::Subcommand)]
 pub enum TxsSub {
+
     #[clap(subcommand)]
     Validator(ValidatorTxs),
-    /// Create onchain account by using Aptos faucet
-    CreateAccount {
-        /// Create onchain account with the given address
-        #[clap(short, long)]
-        account_address: String,
-
-        /// The amount of coins to fund the new account
-        #[clap(short, long)]
-        coins: Option<u64>,
-    },
-
-    /// Transfer coins between accounts
+    #[clap(subcommand)]
+    Upgrade(UpgradeTxs),
+    /// Transfer coins between accounts. Transferring can also be used to create accounts.
     Transfer {
         /// Address of the recipient
         #[clap(short, long)]
@@ -81,7 +80,7 @@ pub enum TxsSub {
         #[clap(short, long)]
         amount: u64,
     },
-
+    Publish(MovePackageDir),
     /// Generate a transaction that executes an Entry function on-chain
     GenerateTransaction {
         #[clap(
@@ -150,17 +149,17 @@ impl TxsCli {
             legacy.child_0_owner.pri_key
         };
 
-        let chain_name = self.chain_id.unwrap_or(NamedChain::MAINNET);
+        let app_cfg = AppCfg::load(self.config_path.clone())?;
 
+        let chain_name = self.chain_id.unwrap_or(app_cfg.workspace.default_chain_id);
         let url = if let Some(u) = self.url.as_ref() {
             u.to_owned()
         } else {
-            AppCfg::load(self.config_path.clone())?.pick_url(Some(chain_name))?
+            app_cfg.pick_url(Some(chain_name))?
         };
 
         let client = Client::new(url);
 
-        // TODO: load profile from ConfigCli::load_ext
         let mut send = Sender::new(
             AccountKey::from_private_key(pri_key),
             ChainId::new(chain_name.id()),
@@ -169,15 +168,15 @@ impl TxsCli {
         .await?;
 
         match &self.subcommand {
-            Some(TxsSub::CreateAccount {
-                account_address,
-                coins,
-            }) => crate::create_account::run(account_address, coins.unwrap_or_default()).await,
-
             Some(TxsSub::Transfer { to_account, amount }) => {
                 send.transfer(to_account.to_owned(), amount.to_owned())
                     .await
-            }
+            },
+            Some(TxsSub::Publish(move_opts)) => {
+              let payload = encode_publish_payload(move_opts)?;
+              send.sign_submit_wait(payload).await?;
+              Ok(())
+            },
 
             Some(TxsSub::GenerateTransaction {
                 function_id,
@@ -185,28 +184,18 @@ impl TxsCli {
                 args,
             }) => {
                 send.generic(function_id, ty_args, args).await
-            }
-
-            // Some(TxsSub::View {
-            //     function_id,
-            //     type_args,
-            //     args,
-            // }) => {
-            //     println!("====================");
-            //     println!(
-            //         "{}",
-            //         crate::view::run(function_id, type_args.to_owned(), args.to_owned()).await?
-            //     );
-            //     Ok(())
-            // },
+            },
             Some(TxsSub::Validator(val_txs)) => {
               val_txs.run(&mut send).await
             },
+            Some(TxsSub::Upgrade(upgrade_txs)) => {
+              upgrade_txs.run(&mut send).await
+            },
             _ => {
-              println!("I'm searching, though I don't succeed \n
-              But someone look, there's a growing need \n
-              Oh, he is lost, there's no place for beginning \n
-              All that's left is an unhappy ending");
+              println!("\nI'm searching, though I don't succeed\n
+But someone look, there's a growing need\n
+Oh, he is lost, there's no place for beginning\n
+All that's left is an unhappy ending");
               Ok(())
             },
         }
